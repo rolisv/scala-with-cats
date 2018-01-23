@@ -17,9 +17,25 @@ object AppPrintable {
       s"$name is a $age year-old $color cat"
     }
 
+  import cats.Eq
+  import cats.syntax.eq._
+  implicit val catEq: Eq[Cat] = (c1: Cat, c2: Cat) => {
+    c1.name === c2.name && c1.age === c2.age && c1.color === c2.color
+  }
+
   def main(args: Array[String]): Unit = {
     val c = Cat("bz", 12, "orange")
 
     println(s"syntax show formatted: ${c.show}")
+
+    val c1 = Cat("Gf", 38, "orange and black")
+    val c2 = Cat("Hc", 33, "orange and black")
+    val optC1 = Option(c1)
+    val optC2 = Option(c2)
+
+    println(s"c1 == c2? ${c1 === c2}")
+
+    import cats.instances.option._
+    println(s"opt(c1) == opt(c2)? ${optC1 === optC2}")
   }
 }
