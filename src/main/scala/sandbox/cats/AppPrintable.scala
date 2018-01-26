@@ -23,6 +23,10 @@ object AppPrintable {
     c1.name === c2.name && c1.age === c2.age && c1.color === c2.color
   }
 
+  final case class Box[A](v: A)
+  implicit def boxPrn[A](implicit prnA: Printable[A]): Printable[Box[A]] =
+    prnA.contramap(_.v)
+
   def main(args: Array[String]): Unit = {
     val c = Cat("bz", 12, "orange")
 

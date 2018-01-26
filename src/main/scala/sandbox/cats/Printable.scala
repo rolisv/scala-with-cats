@@ -1,13 +1,17 @@
 package sandbox.cats
 
-trait Printable[A] {
+trait Printable[A] { self =>
   def format(v: A): String
+
+  def contramap[B](f: B => A): Printable[B] = (v: B) => self.format(f(v))
 }
 
 object PrintableInstances {
   implicit val strPrintable: Printable[String] = (v: String) => v
 
   implicit val intPrintable: Printable[Int] = (v: Int) => v.toString
+
+  implicit val boolPrn: Printable[Boolean] = (v: Boolean) => if (v) "yes" else "no"
 }
 
 object Printable {
