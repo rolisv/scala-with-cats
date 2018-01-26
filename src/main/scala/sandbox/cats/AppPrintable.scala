@@ -24,8 +24,12 @@ object AppPrintable {
   }
 
   final case class Box[A](v: A)
+
   implicit def boxPrn[A](implicit prnA: Printable[A]): Printable[Box[A]] =
     prnA.contramap(_.v)
+
+  implicit def boxCodec[A](implicit ca: Codec[A]): Codec[Box[A]] =
+    ca.imap(Box(_), _.v)
 
   def main(args: Array[String]): Unit = {
     val c = Cat("bz", 12, "orange")
