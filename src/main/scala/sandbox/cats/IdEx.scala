@@ -4,10 +4,10 @@ import cats.Monad
 
 import scala.annotation.tailrec
 
-object Id {
+object IdEx {
   type Id[A] = A
 
-  implicit def idMonad[A] = new Monad[Id[A]] {
+  implicit def idMonad: Monad[Id] = new Monad[Id] {
     override def pure[A](x: A): Id[A] = x
 
     override def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
