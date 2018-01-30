@@ -14,6 +14,22 @@ object Tree {
     }
   }
 
+  import cats.Monad
+  implicit val treeMonad: Monad[Tree] = new Monad[Tree] {
+    override def pure[A](x: A): Tree[A] = Leaf(x)
+
+    override def flatMap[A, B](fa: Tree[A])(f: A => Tree[B]): Tree[B] = fa match {
+      case Leaf(v)      => f(v)
+      case Branch(l, r) => Branch(flatMap(l)(f), flatMap(r)(f))
+    }
+
+    override def tailRecM[A, B](a: A)(f: A => Tree[Either[A, B]]): Tree[B] = f(a) match {
+      case Leaf(Left(a))  => tailRecM(a)(f)
+      case Leaf(Right(b)) => Leaf(b)
+      case Branch(l, r)   => ???
+    }
+  }
+
   def leaf[A](v: A): Tree[A] = Leaf(v)
   def branch[A](l: Tree[A], r: Tree[A]): Tree[A] = Branch(l, r)
 }
