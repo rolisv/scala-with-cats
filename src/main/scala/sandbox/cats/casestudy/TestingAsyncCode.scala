@@ -1,7 +1,8 @@
 package sandbox.cats.casestudy
 
-import scala.concurrent.Future
 import cats.Id
+
+import scala.concurrent.Future
 
 trait UptimeClient[F[_]] {
   def getUptime(host: String): F[Int]
@@ -14,20 +15,14 @@ class TestUptimeClient(hosts: Map[String, Int]) extends UptimeClient[Id] {
   override def getUptime(host: String): Int = hosts.getOrElse(host, 0)
 }
 
-import cats.instances.future._
+import cats.Applicative
 import cats.instances.list._
+import cats.syntax.functor._
 import cats.syntax.traverse._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class UptimeServer(client: UptimeClient) {
-  def getTotalUptime(hosts: List[String]): Future[Int] =
+class UptimeServer[F[_]: Applicative](client: UptimeClient[F]) {
+  def getTotalUptime(hosts: List[String]): F[Int] =
     hosts.traverse(client.getUptime).map(_.sum)
-}
-
-class TestUptimeClient(hosts: Map[String, Int]) extends UptimeClient {
-  override def getUptime(host: String): Future[Int] =
-    Future.successful(hosts.getOrElse(host, 0))
 }
 
 object TestingAsyncCode {
