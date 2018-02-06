@@ -18,6 +18,7 @@ scalacOptions ++= Seq(
 scalacOptions in (Compile, console) -= "-Xfatal-warnings"
 
 scalacOptions in (Compile, console) += "-Ywarn-unused:-imports"
+scalacOptions in (Compile, console) += "-Yrepl-class-based"
 
 scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
 
@@ -30,7 +31,7 @@ Test / sourceGenerators += Def.task {
   IO.write(
     file,
     """object amm extends App {
-      | ammonite.Main.main(args :+ "--predef-code" :+ "interp.configureCompiler(_.settings.YpartialUnification.value = true)")
+      | ammonite.Main.main(args :+ "--predef-code" :+ "interp.configureCompiler(_.settings.YpartialUnification.value = true); interp.configureCompiler(_.settings.Yreplclassbased.value = true)")
       |}""".stripMargin
   )
   Seq(file)
