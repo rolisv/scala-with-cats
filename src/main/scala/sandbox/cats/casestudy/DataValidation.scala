@@ -22,6 +22,7 @@ import cats.data.Validated
 import cats.syntax.semigroup._
 
 sealed trait Predicate[E, A] {
+  import Predicate._
 
   def and(that: Predicate[E, A]): Predicate[E, A] = And(this, that)
   def or(that: Predicate[E, A]): Predicate[E, A] = Or(this, that)
@@ -41,11 +42,22 @@ sealed trait Predicate[E, A] {
   }
 }
 
-final case class Pure[E, A](chk: A => Validated[E, A]) extends Predicate[E, A]
-final case class And[E, A](l: Predicate[E, A], r: Predicate[E, A]) extends Predicate[E, A]
-final case class Or[E, A](l: Predicate[E, A], r: Predicate[E, A]) extends Predicate[E, A]
+object Predicate {
+
+  def apply[E, A](f: A => Validated[E, A]): Predicate[E, A] =
+    Pure(f)
+
+  def lift[E, A](e: E, f: A => Boolean): Predicate[E, A] =
+    Pure(a => Validated.cond(f(a), a, e))
+
+  final case class Pure[E, A](chk: A => Validated[E, A]) extends Predicate[E, A]
+  final case class And[E, A](l: Predicate[E, A], r: Predicate[E, A]) extends Predicate[E, A]
+  final case class Or[E, A](l: Predicate[E, A], r: Predicate[E, A]) extends Predicate[E, A]
+}
 
 sealed trait Check[E, A, B] { self =>
+  import Check._
+
   def apply(a: A)(implicit se: Semigroup[E]): Validated[E, B]
 
   def map[C](f: B => C): Check[E, A, C] =
@@ -58,26 +70,32 @@ sealed trait Check[E, A, B] { self =>
     AndThen(this, that)
 }
 
-final case class PureCheck[E, A](p: Predicate[E, A]) extends Check[E, A, A] {
-  def apply(a: A)(implicit se: Semigroup[E]): Validated[E, A] =
-    p(a)
-}
+object Check {
 
-final case class Map[E, A, B, C](c: Check[E, A, B], f: B => C) extends Check[E, A, C] {
-  def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
-    c(a).map(f)
-}
+  def apply[E, A](p: Predicate[E, A]): Check[E, A, A] =
+    Pure(p)
 
-final case class FlatMap[E, A, B, C](c: Check[E, A, B], f: B => Check[E, A, C])
-    extends Check[E, A, C] {
-  def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
-    c(a).withEither(_.flatMap(b => f(b)(a).toEither))
-}
+  final case class Pure[E, A](p: Predicate[E, A]) extends Check[E, A, A] {
+    def apply(a: A)(implicit se: Semigroup[E]): Validated[E, A] =
+      p(a)
+  }
 
-final case class AndThen[E, A, B, C](c1: Check[E, A, B], c2: Check[E, B, C])
-    extends Check[E, A, C] {
-  def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
-    c1(a).withEither(_.flatMap(b => c2(b).toEither))
+  final case class Map[E, A, B, C](c: Check[E, A, B], f: B => C) extends Check[E, A, C] {
+    def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
+      c(a).map(f)
+  }
+
+  final case class FlatMap[E, A, B, C](c: Check[E, A, B], f: B => Check[E, A, C])
+      extends Check[E, A, C] {
+    def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
+      c(a).withEither(_.flatMap(b => f(b)(a).toEither))
+  }
+
+  final case class AndThen[E, A, B, C](c1: Check[E, A, B], c2: Check[E, B, C])
+      extends Check[E, A, C] {
+    def apply(a: A)(implicit se: Semigroup[E]): Validated[E, C] =
+      c1(a).withEither(_.flatMap(b => c2(b).toEither))
+  }
 }
 
 object DataValidation {}
