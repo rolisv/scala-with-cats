@@ -1,8 +1,8 @@
 package sandbox.cats
 
+import cats.Semigroupal
 import cats.data.Validated
 import cats.syntax.either._
-import cats.syntax.apply._
 import cats.instances.list._
 
 case class User(name: String, age: Int)
@@ -14,10 +14,10 @@ object FormValidationEx {
   type FailSlow[A] = Validated[List[String], A]
 
   def readUser(rq: FormData): FailSlow[User] = {
-    (
+    Semigroupal.map2(
       readName(rq).toValidated,
       readAge(rq).toValidated
-    ).mapN(User.apply)
+    )(User.apply)
   }
 
   def readName(rq: FormData): FailFast[String] = {
