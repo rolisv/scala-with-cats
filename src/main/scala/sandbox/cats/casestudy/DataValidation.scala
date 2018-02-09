@@ -72,10 +72,18 @@ sealed trait Check[E, A, B] { self =>
 
 object Check {
 
-  def apply[E, A](p: Predicate[E, A]): Check[E, A, A] =
-    Pure(p)
+  def apply[E, A, B](f: A => Validated[E, B]): Check[E, A, B] =
+    Pure(f)
 
-  final case class Pure[E, A](p: Predicate[E, A]) extends Check[E, A, A] {
+  def apply[E, A](p: Predicate[E, A]): Check[E, A, A] =
+    PurePredicate(p)
+
+  final case class Pure[E, A, B](f: A => Validated[E, B]) extends Check[E, A, B] {
+    def apply(a: A)(implicit se: Semigroup[E]): Validated[E, B] =
+      f(a)
+  }
+
+  final case class PurePredicate[E, A](p: Predicate[E, A]) extends Check[E, A, A] {
     def apply(a: A)(implicit se: Semigroup[E]): Validated[E, A] =
       p(a)
   }
@@ -98,4 +106,61 @@ object Check {
   }
 }
 
-object DataValidation {}
+object DataValidation {
+  import cats.data.NonEmptyList
+
+  type Errors = NonEmptyList[String]
+
+  def err(msg: String) = NonEmptyList(msg, Nil)
+
+  // Business rules:
+  // - a username must contain at least 4 characters and consist entirely of alphanumeric characters
+  // - an email address must contain an @ sign. Split the string at the @. The string to the left
+  //   must not be empty. The string to the right must be at least three characters long and
+  //   contain a dot.
+
+  val usernameCheck = Check(atLeastLong(4) and alphaNum)
+
+  import cats.syntax.validated._
+
+  val emailContainsNameAndDomain: Check[Errors, String, (String, String)] =
+    Check(_.split('@') match {
+      case Array(n, d) => (n, d).validNel
+      case _ => "Must contain a single '@' character".invalidNel
+    })
+
+  val validName = Check(atLeastLong(1))
+  val validDomain = Check(atLeastLong(3) and contains('.'))
+
+  val validNameAndDomain: Check[Errors, (String, String), String] =
+    Check { case (n, d) =>
+      Semigroupal.map2(validName(n), validDomain(d))(_ + '@' + _)
+    }
+
+  val emailCheck: Check[Errors, String, String] = emailContainsNameAndDomain andThen validNameAndDomain
+
+  def atLeastLong(minLen: Int): Predicate[Errors, String] =
+    Predicate.lift(err(s"Must contain at least $minLen chars"), _.length >= minLen)
+
+  def alphaNum: Predicate[Errors, String] =
+    Predicate.lift(err("Must only contain alphanumeric chars"), _.forall(_.isLetterOrDigit))
+
+  def contains(c: Char): Predicate[Errors, String] =
+    Predicate.lift(err(s"Must contain '$c'"), _.contains(c))
+
+  def containsOnce(c: Char): Predicate[Errors, String] =
+    Predicate.lift(err(s"Must contain '$c' only once"), _.count(_ == c) == 1)
+
+  final case class User(name: String, email: String)
+
+  def validateUser(name: String, email: String): Validated[Errors, User] =
+    Semigroupal.map2(usernameCheck(name), emailCheck(email))(User)
+
+  def main(args: Array[String]): Unit = {
+    val vu1 = validateUser("ro", "user@mail.c")
+    println(vu1)
+
+    val vu2 = validateUser("", "user@mc")
+    println(vu2)
+  }
+}
