@@ -2,4 +2,4 @@
 
 Contains code for exercises solved, while going through the book [Scala with Cats](https://underscore.io/books/scala-with-cats/).
 
-This project is based on [cats-seed.g8](https://github.com/dkim/cats-seed.g8) template.
+This project is based on the [cats-seed.g8](https://github.com/dkim/cats-seed.g8) template.
